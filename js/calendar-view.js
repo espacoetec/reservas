@@ -475,6 +475,39 @@ export async function refreshCalendar() {
 }
 
 /**
+ * Sincroniza e exibe a nova reserva instantaneamente no calendário (0ms)
+ * Se a reserva for para outra data ou turno, posiciona o calendário automaticamente
+ */
+export function syncNewReservaInstant(reserva) {
+    if (!reserva) return;
+
+    const resDateISO = normalizeDate(reserva.data);
+    const resTurno = reserva.turno;
+
+    // Posiciona o calendário na data da reserva
+    if (resDateISO && formatDateISO(currentDate) !== resDateISO) {
+        currentDate = new Date(resDateISO + 'T00:00:00');
+    }
+
+    // Posiciona o calendário no turno da reserva
+    if (resTurno && SCHEDULE_CONFIG[resTurno]) {
+        currentTurno = resTurno;
+        document.querySelectorAll('[data-turno]').forEach(b => {
+            if (b.dataset.turno === resTurno) {
+                b.classList.add('active', 'bg-indigo-600', 'text-white');
+                b.classList.remove('bg-white', 'text-gray-700');
+            } else {
+                b.classList.remove('active', 'bg-indigo-600', 'text-white');
+                b.classList.add('bg-white', 'text-gray-700');
+            }
+        });
+    }
+
+    // Carrega e renderiza o calendário instantaneamente
+    loadDayData();
+}
+
+/**
  * Destrói listeners
  */
 export function destroyCalendarView() {

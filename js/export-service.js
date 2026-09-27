@@ -6,7 +6,7 @@
 
 import { SCHEDULE_CONFIG } from './schedule-config.js';
 import { formatDateBR, formatDateISO, getDayName, getWeekDates } from './utils.js';
-import { getLaboratorios, getReservasSemana } from './sheet-service.js';
+import { getLaboratorios, getReservasSemana, normalizeDate } from './sheet-service.js';
 import { showToast, showLoader, openModal, closeModal } from './ui-helpers.js';
 import { getCurrentDate, getCurrentTurno } from './calendar-view.js';
 import { isAdmin } from './auth.js';
@@ -232,15 +232,25 @@ async function generateAndDownloadSpreadsheet({ mode, scope, turno, date, format
     const fileName = `${prefix}_${dateTag}.${format}`;
 
     // 8. Exporta conforme formato
-    if (format === 'xlsx' && typeof window.XLSX !== 'undefined') {
-        exportViaSheetJS({
-            fileName,
-            gridAOA,
-            listAOA,
-            mode,
-            labsCount: labs.length
-        });
-        showToast('Planilha Excel (.xlsx) baixada com sucesso!', 'success');
+    if (format === 'xlsx') {
+        const XLSX = await ensureXLSX();
+        if (XLSX) {
+            exportViaSheetJS({
+                fileName,
+                gridAOA,
+                listAOA,
+                mode,
+                labsCount: labs.length
+            });
+            showToast('Planilha Excel (.xlsx) baixada com sucesso!', 'success');
+        } else {
+            // Fallback para CSV estruturado se SheetJS não estiver disponível
+            exportViaCSV({
+                fileName: fileName.replace('.xlsx', '.csv'),
+                aoaData: gridAOA
+            });
+            showToast('SheetJS indisponível no navegador. Baixada em CSV compatível com Excel!', 'info', 5000);
+        }
     } else {
         // Fallback para CSV estruturado com UTF-8 BOM
         exportViaCSV({
@@ -409,10 +419,48 @@ function buildReservasTableAOA({ dates, turnosList, labs, reservas, mode }) {
 }
 
 /**
+ * Garante que a biblioteca SheetJS esteja carregada e pronta
+ */
+async function ensureXLSX() {
+    if (typeof window.XLSX !== 'undefined') return window.XLSX;
+
+    return new Promise((resolve) => {
+        let resolved = false;
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        script.onload = () => {
+            resolved = true;
+            resolve(window.XLSX || null);
+        };
+        script.onerror = () => {
+            const fallback = document.createElement('script');
+            fallback.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+            fallback.onload = () => {
+                resolved = true;
+                resolve(window.XLSX || null);
+            };
+            fallback.onerror = () => {
+                resolved = true;
+                resolve(null);
+            };
+            document.head.appendChild(fallback);
+        };
+        document.head.appendChild(script);
+
+        // Timeout de segurança de 4 segundos
+        setTimeout(() => {
+            if (!resolved) resolve(window.XLSX || null);
+        }, 4000);
+    });
+}
+
+/**
  * Exporta para arquivo Excel (.xlsx) nativo utilizando SheetJS
  */
 function exportViaSheetJS({ fileName, gridAOA, listAOA, mode, labsCount }) {
     const XLSX = window.XLSX;
+    if (!XLSX) return;
+
     const wb = XLSX.utils.book_new();
 
     // 1. Aba: Grade do Calendário (Matriz)
@@ -446,7 +494,21 @@ function exportViaSheetJS({ fileName, gridAOA, listAOA, mode, labsCount }) {
         XLSX.utils.book_append_sheet(wb, wsList, 'Lista_Agendamentos');
     }
 
-    XLSX.writeFile(wb, fileName);
+    try {
+        XLSX.writeFile(wb, fileName);
+    } catch (writeErr) {
+        console.warn('XLSX.writeFile direto falhou, usando download por Blob:', writeErr);
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 }
 
 /**

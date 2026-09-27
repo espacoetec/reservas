@@ -14,7 +14,7 @@ import {
 } from './sheet-service.js';
 import { openModal, closeModal, showToast, showLoader } from './ui-helpers.js';
 import { getCurrentUser, getUserProfile, isAdmin } from './auth.js';
-import { refreshCalendar } from './calendar-view.js';
+import { refreshCalendar, syncNewReservaInstant } from './calendar-view.js';
 
 let laboratorios = [];
 let professores = [];
@@ -422,21 +422,21 @@ async function handleFormSubmit(e) {
     };
 
     try {
-        showLoader(true, 'Salvando reserva...');
-
         if (recorrente && recorrenteAte) {
             await createReservaRecorrente(reservaData, recorrenteAte, admin);
         } else {
             const result = await createReserva(reservaData, admin);
-            if (!result.success) return; // Conflito - toast já mostrado
+            if (!result.success) return; // Conflito - toast já mostrado no checkConflict
         }
 
+        // 1. Fecha o modal de reserva imediatamente
         closeModal('reserva-modal');
-        refreshCalendar();
+
+        // 2. Posiciona o calendário e exibe a nova reserva instantaneamente (0ms)
+        syncNewReservaInstant(reservaData);
     } catch (error) {
         console.error('Erro ao salvar reserva:', error);
-    } finally {
-        showLoader(false);
+        showToast('Erro ao salvar reserva: ' + (error.message || error), 'error');
     }
 }
 
