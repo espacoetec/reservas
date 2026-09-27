@@ -29,6 +29,13 @@
 
     <!-- SheetJS (Excel XLSX Export) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        if (typeof XLSX === 'undefined') {
+            const fb = document.createElement('script');
+            fb.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+            document.head.appendChild(fb);
+        }
+    </script>
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/custom.css">
