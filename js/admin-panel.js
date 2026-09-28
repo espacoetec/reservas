@@ -19,6 +19,7 @@ import { refreshCalendar } from './calendar-view.js';
 import { refreshFormData } from './reservation-form.js';
 
 let activeTab = 'pendentes';
+let adminTabsInitialized = false;
 
 /**
  * Inicializa o painel administrativo
@@ -33,6 +34,9 @@ export async function initAdminPanel() {
  * Configura as abas do painel admin
  */
 function setupAdminTabs() {
+    if (adminTabsInitialized) return;
+    adminTabsInitialized = true;
+
     document.querySelectorAll('[data-admin-tab]').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('[data-admin-tab]').forEach(t => {

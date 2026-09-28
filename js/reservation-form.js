@@ -21,6 +21,8 @@ let professores = [];
 let cursos = [];
 let turmas = [];
 let disciplinas = [];
+let formListenersInitialized = false;
+let quickAddModalsInitialized = false;
 
 /**
  * Inicializa o formulário de reserva
@@ -209,6 +211,9 @@ function renderRecursos() {
  * Configura listeners do formulário
  */
 function setupFormListeners() {
+    if (formListenersInitialized) return;
+    formListenersInitialized = true;
+
     // Turno change -> atualiza pills
     const turnoSelect = document.getElementById('reserva-turno');
     turnoSelect?.addEventListener('change', () => {
@@ -444,6 +449,9 @@ async function handleFormSubmit(e) {
  * Configura modais de adição rápida (Professor, Curso, Turma e Disciplina)
  */
 function setupQuickAddModals() {
+    if (quickAddModalsInitialized) return;
+    quickAddModalsInitialized = true;
+
     // ------------------------------------
     // PROFESSOR
     // ------------------------------------

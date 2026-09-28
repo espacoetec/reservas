@@ -13,6 +13,7 @@ import { onReservasChange, getLaboratorios, getCursos, getDisciplinas, normalize
 import { createSkeletonCards } from './ui-helpers.js';
 
 let currentDate = new Date();
+currentDate.setHours(12, 0, 0, 0);
 
 let currentTurno = 'noite';
 let laboratorios = [];
@@ -20,6 +21,7 @@ let cursosCache = [];
 let disciplinasCache = [];
 let reservasCache = [];
 let unsubscribeReservas = null;
+let calendarControlsInitialized = false;
 
 /**
  * Inicializa o calendar view
@@ -49,28 +51,44 @@ async function loadInitialData() {
  * Configura os controles do calendário (navegação de dias, turnos, data)
  */
 function setupCalendarControls() {
-    // Navegação dia a dia (anterior / próximo) - avança ou recua 1 dia consecutivo por clique
+    if (calendarControlsInitialized) return;
+    calendarControlsInitialized = true;
+
+    // Navegação dia a dia (anterior / próximo) - avança ou recua exatamente 1 dia consecutivo por clique
     const prevBtn = document.getElementById('prev-day') || document.getElementById('prev-week');
-    prevBtn?.addEventListener('click', () => {
-        currentDate = addDays(currentDate, -1);
-        loadDayData();
-    });
+    if (prevBtn) {
+        prevBtn.onclick = (e) => {
+            e.preventDefault();
+            currentDate = addDays(currentDate, -1);
+            loadDayData();
+        };
+    }
     
     const nextBtn = document.getElementById('next-day') || document.getElementById('next-week');
-    nextBtn?.addEventListener('click', () => {
-        currentDate = addDays(currentDate, 1);
-        loadDayData();
-    });
+    if (nextBtn) {
+        nextBtn.onclick = (e) => {
+            e.preventDefault();
+            currentDate = addDays(currentDate, 1);
+            loadDayData();
+        };
+    }
 
     // Botão "Hoje"
-    document.getElementById('today-btn')?.addEventListener('click', () => {
-        currentDate = new Date();
-        loadDayData();
-    });
+    const todayBtn = document.getElementById('today-btn');
+    if (todayBtn) {
+        todayBtn.onclick = (e) => {
+            e.preventDefault();
+            const today = new Date();
+            today.setHours(12, 0, 0, 0);
+            currentDate = today;
+            loadDayData();
+        };
+    }
 
     // Seletores de turno
     document.querySelectorAll('[data-turno]').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.onclick = (e) => {
+            e.preventDefault();
             document.querySelectorAll('[data-turno]').forEach(b => {
                 b.classList.remove('active', 'bg-indigo-600', 'text-white');
                 b.classList.add('bg-white', 'text-gray-700');
@@ -79,15 +97,18 @@ function setupCalendarControls() {
             btn.classList.remove('bg-white', 'text-gray-700');
             currentTurno = btn.dataset.turno;
             renderCalendar();
-        });
+        };
     });
 
     // Date picker
-    document.getElementById('date-picker')?.addEventListener('change', (e) => {
-        if (!e.target.value) return;
-        currentDate = new Date(e.target.value + 'T00:00:00');
-        loadDayData();
-    });
+    const datePicker = document.getElementById('date-picker');
+    if (datePicker) {
+        datePicker.onchange = (e) => {
+            if (!e.target.value) return;
+            currentDate = new Date(e.target.value + 'T12:00:00');
+            loadDayData();
+        };
+    }
 }
 
 /**
@@ -486,7 +507,7 @@ export function syncNewReservaInstant(reserva) {
 
     // Posiciona o calendário na data da reserva
     if (resDateISO && formatDateISO(currentDate) !== resDateISO) {
-        currentDate = new Date(resDateISO + 'T00:00:00');
+        currentDate = new Date(resDateISO + 'T12:00:00');
     }
 
     // Posiciona o calendário no turno da reserva

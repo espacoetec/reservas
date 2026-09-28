@@ -540,7 +540,11 @@ function setupSheetsConfigUI() {
     updateHeaderBadge();
 }
 
+let appInitialized = false;
 async function initApp() {
+    if (appInitialized) return;
+    appInitialized = true;
+
     console.log('🚀 Inicializando Espaço ETEC - Reserva de Laboratórios (Google Sheets)...');
 
     setupLoginForm();
